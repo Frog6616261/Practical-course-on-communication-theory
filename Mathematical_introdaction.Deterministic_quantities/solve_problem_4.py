@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 
 pi = np.pi
 
-# === Определение треугольной функции ===
 def triangle(x, w):
     f = np.zeros_like(x)
     mask = np.abs(x) < w/2
@@ -20,7 +19,6 @@ def get_spec_analytical(N, Fs, w):
 
     return spec
 
-# === Функция вычисления спектра ===
 def analytical_spectrum(N, Fs, T, w):
     """
     Вычисляет спектр треугольной функции.
@@ -53,18 +51,19 @@ def analytical_spectrum(N, Fs, T, w):
     fft_vals = get_spec_analytical(N, Fs, w)
     fft_freqs = np.fft.fftfreq(N, d=dt)
 
-    fft_shifted = np.fft.fftshift(np.abs(fft_vals)) / N
+    fft_shifted = np.fft.fftshift(np.abs(fft_vals))
     freqs_shifted = np.fft.fftshift(fft_freqs)
 
-    eps = 1e-12
+    eps = 0 #1e-12
+
     fft_db = 20 * np.log10(fft_shifted + eps)
 
     return freqs_shifted, fft_db, t, signal
 
 # === Параметры ===
 w = 2.0     # ширина треугольной функции
-T = 8.0     # длина временного промежутка (T > w)
-Fs = 200    # частота дискретизации
+T = 4.0     # длина временного промежутка (T > w)
+Fs = 50    # частота дискретизации
 N = int(T * Fs)   # количество отсчетов
 
 # === Получение спектра ===
@@ -80,18 +79,18 @@ plt.figure(figsize=(12,5))
 # Сигнал
 plt.subplot(1,2,1)
 plt.plot(t, signal)
-plt.title("Треугольная функция")
+plt.title("Triangle func")
 plt.xlabel("t")
 plt.ylabel("f(t)")
 plt.grid(True)
 
 # Спектр
 plt.subplot(1,2,2)
-plt.plot(freqs, spec_np_db, label="FFT np")
-plt.plot(freqs, spec_analytic_db, label="Analytical", linestyle="--")
-plt.title("Амплитудный спектр (FFT) в dB")
-plt.xlabel("Частота [Hz]")
-plt.ylabel("Амплитуда [dB]")
+plt.plot(freqs, spec_np_db, label="FFT np", linestyle="dotted")
+plt.plot(freqs, spec_analytic_db, label="Analytical", linestyle="dotted")
+plt.title("Amp's spec (FFT) в dB")
+plt.xlabel("Freq [Hz]")
+plt.ylabel("Amp [dB]")
 plt.grid(True)
 plt.legend()
 
