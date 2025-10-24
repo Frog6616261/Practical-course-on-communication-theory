@@ -56,7 +56,7 @@ def analytical_spectrum(N, Fs, T, w):
 
     eps = 0 #1e-12
 
-    fft_db = 20 * np.log10(fft_shifted + eps)
+    fft_db = 10 * np.log10(fft_shifted + eps)
 
     return freqs_shifted, fft_db, t, signal
 
@@ -70,8 +70,8 @@ N = int(T * Fs)   # количество отсчетов
 freqs, spec_analytic_db, t, signal = analytical_spectrum(N, Fs, T, w)
 
 # === Теоретический спектр через sinc^2 ===
-F_theoretical = w * (np.sinc(freqs * w))**2
-spec_np_db = 20 * np.log10(np.abs(F_theoretical) + 1e-12)
+F_theoretical = w * (np.sinc(freqs * w/np.pi))**2
+spec_np_db = 10 * np.log10(np.abs(F_theoretical) + 1e-12)
 
 # === Визуализация ===
 plt.figure(figsize=(12,5))

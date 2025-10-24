@@ -48,7 +48,7 @@ def get_s_spec_analytic(w, a, b):
 
     w = np.asarray(w, dtype=float)
 
-    return ((b-a)*np.exp(-1j*w/2*(b+a))*np.sinc(w/2*(b-a)))
+    return ((b-a)*np.exp(-1j*w/2*(b+a))*np.sinc(w/2*(b-a)/np.pi))
 
 
 def get_fft_numpy_spec(fs, t_start, t_end, a, b):
@@ -92,10 +92,10 @@ s_spec_my_dft = (dft_analyst._amp_spec).copy()
 w_arr_my_dft = (dft_analyst._w_arr).copy()
 
 # Translate to dB: 20*log10(|y|)
-yA_db = 20 * np.log10(np.abs(s_spec_analytic))
-yAdft_db = 20 * np.log10(np.abs(s_spec_analytic_dft))
-yN_db = 20 * np.log10(np.abs(s_spec_fft_np))
-yM_db = 20 * np.log10(np.abs(s_spec_my_dft))
+yA_db = 10 * np.log10(np.abs(s_spec_analytic))
+yAdft_db = 10 * np.log10(np.abs(s_spec_analytic_dft))
+yN_db = 10 * np.log10(np.abs(s_spec_fft_np))
+yM_db = 10 * np.log10(np.abs(s_spec_my_dft))
 
 
 ## Plotting     ------------------------------------------------------------------------------------------------------------------------
