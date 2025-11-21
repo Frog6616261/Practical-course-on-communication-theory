@@ -5,4 +5,7 @@ This repository is intended for storing assignments from practical sessions in C
 Topics of the assignments:  
 1) Mathematical Introduction. Deterministic Quantities  
 2) Probability Theory  
-3) 
+3) Random processes
+4) Signal space
+5)
+6)

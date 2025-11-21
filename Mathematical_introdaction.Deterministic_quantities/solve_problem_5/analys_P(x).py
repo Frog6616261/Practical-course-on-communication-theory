@@ -12,7 +12,7 @@ t_start     = 0
 t_end       = 3
 a           = 1
 b           = 3
-freq_disc   = 300
+freq_disc   = 30
 
 
 ## funcs                ------------------------------------------------------------------------------------------------------------------------
@@ -60,8 +60,8 @@ def get_fft_numpy_spec(fs, t_start, t_end, a, b):
     
     s = get_s(t, a, b)
     
-    spec_all = np.fft.fft(s, n = N)
-    freqs_all = np.fft.fftfreq(N, d = dt)
+    spec_all = (np.fft.fft(s, n = N))
+    freqs_all = np.fft.fftshift(np.fft.fftfreq(N, d = dt))
 
     return freqs_all, spec_all
 
