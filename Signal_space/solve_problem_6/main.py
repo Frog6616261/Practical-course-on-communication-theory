@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.fft import fft, ifft, fftfreq, fftshift
 
 from ComplexEnvelopeModulator import ComplexEnvelopeModulator
 
@@ -8,22 +9,31 @@ PI = np.pi
 
 ## Model parameters
 
-pass_freq = 1e9
+pass_freq = 9*1e2
 
-AMP_INFO_SPEC = 5
-INFO_SPEC_BANWIND = 1e2
+AMP_INFO_SPEC = 7*1e1
+INFO_SPEC_BANWIND = 9*1e1
 
-Fs = 1e3
+Fs = (pass_freq * 2 + INFO_SPEC_BANWIND + 1e1) * 1e1
 dt = 1/Fs
 t_start = 1e-4
-t_end = 2
+t_end = 0.2
 
 
 ## Spectrum's func of inform signal
 def X_l(f):
-    if (f < -INFO_SPEC_BANWIND/2 or INFO_SPEC_BANWIND/2 < f): return 0
+    def X_l_uniq(f):
+        if ((f < -INFO_SPEC_BANWIND/2) or (INFO_SPEC_BANWIND/2 < f)):
+            return 0
 
-    return AMP_INFO_SPEC * (f + INFO_SPEC_BANWIND/2) / INFO_SPEC_BANWIND
+        return AMP_INFO_SPEC * (f + INFO_SPEC_BANWIND/2) / INFO_SPEC_BANWIND
+    
+    result = np.zeros(np.size(f))
+
+    for i in range(0, np.size(f)):
+        result[i] = X_l_uniq(f[i])
+
+    return result
 
 
 ## Time-dimention teoretical functions
@@ -33,7 +43,7 @@ f_0 = pass_freq
 
 def x_l_teor(t):
 
-    return A / (2*w) * ((w/t)*np.sin(2*PI*w*t) + (2j/(t*t))*np.sin(2*PI*w*t) + (2*w/(1j*t))*np.cos(2*PI*w*t))
+    return A / (8*(PI**3)*w*(t*t)) * ((2*PI*w*t + 1j)*np.sin(2*PI*w*t) - (2*PI*1j*w*t)*np.cos(2*PI*w*t))
 
 def x_teor(t):
 
@@ -41,7 +51,7 @@ def x_teor(t):
 
 def x_a_teor(t):
 
-    return 0.5*x_teor(t) + (0.5j)*x_l_teor(t)
+    return 0.5*x_teor(t) + (0.5j)*np.imag(x_l_teor(t)*np.exp(2*PI*1j*f_0*t))
 
 def envelope_amp_teor(t):
 
@@ -53,10 +63,7 @@ def envelope_phase_teor(t):
 
 
 ## Create modulator object
-info_band_down = -INFO_SPEC_BANWIND/2 - 10
-info_band_up = INFO_SPEC_BANWIND/2 + 10
-
-cem = ComplexEnvelopeModulator(pass_freq, info_band_down, info_band_up)
+cem = ComplexEnvelopeModulator(pass_freq)
 
 
 ## Find time-dimention function
@@ -78,6 +85,20 @@ err_envelope_phase = np.abs(envelope_phase(t) - envelope_phase_teor(t))
 
 
 ## Find spectrum
+N = np.size(t)
+T = dt
+freq = fftfreq(N,T)
+spec_analitic = X_l(freq)
+
+X_l_teor = np.abs(fft(x_l_teor(t))) * (1.0/N)
+X_teor = np.abs(fft(x_teor(t))) * (1.0/N)
+X_a_teor = np.abs(fft(x_a_teor(t))) * (1.0/N)
+
+X_l_prac = np.abs(fft(x_l(t))) * (1.0/N)
+X_prac = np.abs(fft(x(t))) * (1.0/N)
+X_a_prac = np.abs(fft(x_a(t))) * (1.0/N)
+
+
 
 ## PLotting errors
 plt.figure(figsize=(10, 6))
@@ -96,16 +117,84 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-# plt.figure()
 
-# plt.plot(x, ksi_prob_density_analytic, 'o', label='Analytic func Ksi')
-# plt.hist(ksi_samples_scipy,  density=True, bins='auto', alpha=0.6, label='scipy Ksi')
-# plt.hist(ksi_samples_my, density=True, bins='auto', alpha=0.6, label='my Ksi')
+# Plotting specturms
+fig1, axs = plt.subplots(2, 1, figsize=(10, 8))
 
-# plt.xlabel('Random variable')
-# plt.ylabel('Probability')
-# plt.title("Probability density, lambda = " + str(lambd))
-# plt.legend()
-# plt.grid(True)
-# plt.show()
+axs[0].plot(freq, X_l_teor,            '.', label='X_l teor')
+axs[0].plot(freq, X_teor,              '.', label='X teor')
+axs[0].plot(freq, X_a_teor,            '.', label='X_a teor')
+axs[0].plot(freq, spec_analitic,            '.', label='X_l analitic')
+axs[0].set_title('Spectrum curves of teoretical functions')
+axs[0].set_xlabel('freq Hz')
+axs[0].set_ylabel('Amp')
+axs[0].legend()
+axs[0].grid(True)
+
+axs[1].plot(freq, X_l_prac,            '.', label='X_l prac')
+axs[1].plot(freq, X_prac,              '.', label='X prac')
+axs[1].plot(freq, X_a_prac,            '.', label='X_a prac')
+axs[1].plot(freq, spec_analitic,            '.', label='X_l analitic')
+axs[1].set_title('Spectrum curves of practical functions')
+axs[1].set_xlabel('freq Hz')
+axs[1].set_ylabel('Amp')
+axs[1].legend()
+axs[1].grid(True)
+
+plt.tight_layout()
+plt.show()
+
+# Plotting time-dimention evnvelope with basepass signal
+fig2, axs2 = plt.subplots(3, 2, figsize=(10, 12))
+
+axs2[0][0].plot(t, x_teor(t),            '.-', label='x teor')
+axs2[0][0].plot(t, envelope_amp_teor(t),              '.-', label='envelope amp teor')
+axs2[0][0].set_title('Signal curves of teoretical functions with envelope')
+axs2[0][0].set_xlabel('time sec')
+axs2[0][0].set_ylabel('Amp')
+axs2[0][0].legend()
+axs2[0][0].grid(True)
+
+axs2[0][1].plot(t, envelope_phase_teor(t),              '.', label='envelope phase teor')
+axs2[0][1].set_title('Phase curve of teoretical envelope')
+axs2[0][1].set_xlabel('time sec')
+axs2[0][1].set_ylabel('radian')
+axs2[0][1].legend()
+axs2[0][1].grid(True)
+
+
+axs2[1][0].plot(t, x(t),            '.-', label='x prac')
+axs2[1][0].plot(t, envelope_amp(t),              '.-', label='envelope amp prac')
+axs2[1][0].set_title('Signal curves of practical functions with envelope')
+axs2[1][0].set_xlabel('time sec')
+axs2[1][0].set_ylabel('Amp')
+axs2[1][0].legend()
+axs2[1][0].grid(True)
+
+axs2[1][1].plot(t, envelope_phase(t),            '.', label='envelope phase teor')
+axs2[1][1].set_title('Phase curve of practical envelope')
+axs2[1][1].set_xlabel('time sec')
+axs2[1][1].set_ylabel('radian')
+axs2[1][1].legend()
+axs2[1][1].grid(True)
+
+
+axs2[2][0].plot(t, x_teor(t),            '.-', label='x teor')
+axs2[2][0].plot(t, envelope_amp(t),              '.-', label='envelope amp prac')
+axs2[2][0].set_title('Perform teoretical signal with practical envelope')
+axs2[2][0].set_xlabel('time sec')
+axs2[2][0].set_ylabel('Amp')
+axs2[2][0].legend()
+axs2[2][0].grid(True)
+
+axs2[2][1].plot(t, envelope_phase(t),            '.', label='envelope phase prac')
+axs2[2][1].plot(t, envelope_phase_teor(t),            '.', label='envelope phase teor')
+axs2[2][1].set_title('Perform phase of envelopes')
+axs2[2][1].set_xlabel('time sec')
+axs2[2][1].set_ylabel('radian')
+axs2[2][1].legend()
+axs2[2][1].grid(True)
+
+plt.tight_layout()
+plt.show()
 
