@@ -14,55 +14,100 @@ PI = np.pi
 
 ## Model parameters
 
-T_signal = 0.01
+T_signal = 1e-2
 dt = 1e-5
 df = 1/dt
-t = np.linspace(0, T_signal, int(T_signal*df), endpoint=False)
+t = np.linspace(0, T_signal, num=int(T_signal*df), endpoint=False)
+Energy_of_impulse = 1
+h = 0.5
 
 
-bit_rate = 10e3
-
-numb_bits = 1024
+bit_rate = 1e4
+numb_bits = int(T_signal * bit_rate * np.log2(16) * np.log2(64) * np.log2(256))
 bit_sequence = [random.randint(0, 1) for _ in range(numb_bits)]
 
 
-a = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-print(a[4:7])
 
-qam16 = QAM_mapper(16, bit_rate)
-msk = MSK_mapper(bit_rate, 1, 0.5)
+## Create objects
+qam4 = QAM_mapper(4, bit_rate, Energy_of_impulse)
+qam16 = QAM_mapper(16, bit_rate, Energy_of_impulse)
+qam64 = QAM_mapper(64, bit_rate, Energy_of_impulse)
+qam256 = QAM_mapper(256, bit_rate, Energy_of_impulse)
 
-#baseband_msk_signal = msk.get_baseband_signal(bit_sequence)
+msk = MSK_mapper(bit_rate, Energy_of_impulse, h)
+
+
+## Find baseband signals
+baseband_qam4_signal = qam4.get_baseband_signal(bit_sequence)
 baseband_qam16_signal = qam16.get_baseband_signal(bit_sequence)
+baseband_qam64_signal = qam64.get_baseband_signal(bit_sequence)
+baseband_qam256_signal = qam256.get_baseband_signal(bit_sequence)
 
-qam16_s = baseband_qam16_signal(t)
-#msk_s = baseband_msk_signal(t)
+baseband_qam4_signal_t = baseband_qam4_signal(t)
+baseband_qam16_signal_t = baseband_qam16_signal(t)
+baseband_qam64_signal_t = baseband_qam64_signal(t)
+baseband_qam256_signal_t = baseband_qam256_signal(t)
 
-# Визуализация
-plt.figure(figsize=(12, 4))
-plt.plot(t, np.angle(qam16_s))
-plt.title("qam16 модулированный сигнал")
-plt.xlabel("Отсчёты")
-plt.ylabel("Амплитуда")
-plt.grid(True)
+baseband_msk_signal = msk.get_baseband_signal(bit_sequence)
+
+baseband_msk_signal_t, tt, msk_phases = msk.get_modulate_sequence_and_time_and_phase(0, T_signal, 1000, bit_sequence)
+
+
+
+
+## Plotting signals's Amp and Phases
+
+# plotting qam
+fig1, axs = plt.subplots(2, 1, figsize=(10, 8))
+
+axs[0].plot(t, np.abs(baseband_qam4_signal_t),            '-', label='qam 4')
+axs[0].plot(t, np.abs(baseband_qam16_signal_t),              '-', label='qam 16')
+axs[0].plot(t, np.abs(baseband_qam64_signal_t),            '-', label='qam 64')
+axs[0].plot(t, np.abs(baseband_qam256_signal_t),            '-', label='qam 256')
+axs[0].set_title('Amplitudes of QAM')
+axs[0].set_xlabel('time sec')
+axs[0].set_ylabel('Amp')
+axs[0].legend()
+axs[0].grid(True)
+
+axs[1].plot(t, np.angle(baseband_qam4_signal_t),            '-', label='qam 4')
+axs[1].plot(t, np.angle(baseband_qam16_signal_t),              '-', label='qam 16')
+axs[1].plot(t, np.angle(baseband_qam64_signal_t),            '-', label='qam 64')
+axs[1].plot(t, np.angle(baseband_qam256_signal_t),            '-', label='qam 256')
+axs[1].set_title('Phases of QAM')
+axs[1].set_xlabel('time sec')
+axs[1].set_ylabel('Radians')
+axs[1].legend()
+axs[1].grid(True)
+
+plt.tight_layout()
 plt.show()
 
+# ploting msk
+fig2, axs = plt.subplots(2, 1, figsize=(10, 8))
 
+x_vals = np.arange(0, T_signal, msk._T_symb)
+axs[0].vlines(x_vals, np.min(np.real(baseband_msk_signal_t)), np.max(np.real(baseband_msk_signal_t)), linestyles='dashed')
+axs[1].vlines(x_vals, np.min(msk_phases), np.max(msk_phases), linestyles='dashed')
 
-# ## Spectrum's func of inform signal
-# def X_l(f):
-#     def X_l_uniq(f):
-#         if ((f < -INFO_SPEC_BANWIND/2) or (INFO_SPEC_BANWIND/2 < f)):
-#             return 0
+axs[0].plot(tt, np.real(baseband_msk_signal_t),            '-', label='msk real')
+axs[0].plot(tt, np.imag(baseband_msk_signal_t),            '-', label='msk imag')
+axs[0].set_title('Amplitudes of MSK')
+axs[0].set_xlabel('time sec')
+axs[0].set_ylabel('Amp')
+axs[0].legend()
+axs[0].grid(True)
 
-#         return AMP_INFO_SPEC * (f + INFO_SPEC_BANWIND/2) / INFO_SPEC_BANWIND
-    
-#     result = np.zeros(np.size(f))
+axs[1].plot(tt, msk_phases,            '-', label='msk')
+axs[1].set_title('Phases of MSK')
+axs[1].set_xlabel('time sec')
+axs[1].set_ylabel('Radians')
+axs[1].legend()
+axs[1].grid(True)
 
-#     for i in range(0, np.size(f)):
-#         result[i] = X_l_uniq(f[i])
+plt.tight_layout()
+plt.show()
 
-#     return result
 
 
 # ## Time-dimention teoretical functions
