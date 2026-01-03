@@ -3,12 +3,36 @@ import matplotlib.pyplot as plt
 import random
 
 from scipy.fft import fft, ifft, fftfreq, fftshift
+from scipy.signal import welch
 
 from QAM_mapper import QAM_mapper
 from MSK_mapper import MSK_mapper
 from plotting_funcs import plot_constellation
 
 PI = np.pi
+
+def occupied_bandwidth_99(x, fs, threshold=0.99):
+
+    N = len(x)
+    X = fft(x)
+    
+    P = (np.abs(X)/N)**2
+    
+    f = fftfreq(N, 1/fs)
+    
+    order = np.argsort(np.abs(f))
+    f_sorted = np.abs(f)[order]
+    P_sorted = P[order]
+    
+    df = fs / N
+    
+    cum_power = np.cumsum(P_sorted) * df
+    total_power = np.sum(P) * df
+    
+    idx = np.searchsorted(cum_power, threshold * total_power)
+    f_edge = f_sorted[idx]
+    
+    return f_edge
 
 
 
@@ -17,7 +41,8 @@ PI = np.pi
 T_signal = 1e-2
 dt = 1e-5
 df = 1/dt
-t = np.linspace(0, T_signal, num=int(T_signal*df), endpoint=False)
+numb_points = int(T_signal / dt)
+t = np.linspace(0, T_signal, num=numb_points, endpoint=False)
 Energy_of_impulse = 1
 h = 0.5
 
@@ -48,11 +73,63 @@ baseband_qam16_signal_t = baseband_qam16_signal(t)
 baseband_qam64_signal_t = baseband_qam64_signal(t)
 baseband_qam256_signal_t = baseband_qam256_signal(t)
 
-baseband_msk_signal = msk.get_baseband_signal(bit_sequence)
+baseband_msk_signal_t, t_msk, msk_phases = msk.get_modulate_sequence_and_time_and_phase(0, T_signal, numb_points, bit_sequence)
 
-baseband_msk_signal_t, tt, msk_phases = msk.get_modulate_sequence_and_time_and_phase(0, T_signal, 1000, bit_sequence)
+if np.array_equal(t, t_msk): print("ploho")
+
+## Find spectrums
+N = np.size(baseband_qam4_signal_t)
+freqs = fftfreq(N, dt)
+
+qam4_spec = fft(baseband_qam4_signal_t) / N
+qam16_spec = fft(baseband_qam16_signal_t) / N
+qam64_spec = fft(baseband_qam64_signal_t) / N
+qam256_spec = fft(baseband_qam256_signal_t) / N
+
+msk_spec = fft(baseband_msk_signal_t) / N
 
 
+## Find teoretic spectrum effectivity
+
+# find bandwidth where 99% power of all spector's power
+qam4_bandwidth = 2*occupied_bandwidth_99(baseband_qam4_signal_t, df)
+qam16_bandwidth = 2*occupied_bandwidth_99(baseband_qam16_signal_t, df)
+qam64_bandwidth = 2*occupied_bandwidth_99(baseband_qam64_signal_t, df)
+qam256_bandwidth = 2*occupied_bandwidth_99(baseband_qam256_signal_t, df)
+
+msk_bandwidth = 2*occupied_bandwidth_99(baseband_msk_signal_t, df)
+
+qam4_spec_eff = bit_rate / qam4_bandwidth
+qam16_spec_eff = bit_rate / qam16_bandwidth
+qam64_spec_eff = bit_rate / qam64_bandwidth
+qam256_spec_eff = bit_rate / qam256_bandwidth
+
+msk_spec_eff = bit_rate / msk_bandwidth
+
+
+qam4_spec_eff_teor = np.log2(4)
+qam16_spec_eff_teor = np.log2(16)
+qam64_spec_eff_teor = np.log2(64)
+qam256_spec_eff_teor = np.log2(256)
+
+msk_spec_eff_teor = 1 / 1  # bit_rate_msk / bandwidth
+
+print("Bandwidth efficientivity:")
+print("BW_E QAM4=", qam4_spec_eff, "  BW_E QAM4 teoreical=", qam4_spec_eff_teor)
+print("BW_E QAM16=", qam16_spec_eff, "  BW_E QAM16 teoreical=", qam16_spec_eff_teor)
+print("BW_E QAM64=", qam64_spec_eff, "  BW_E QAM64 teoreical=", qam64_spec_eff_teor)
+print("BW_E QAM256=", qam256_spec_eff, "  BW_E QAM256 teoreical=", qam256_spec_eff_teor)
+
+print("BW_E MSK=", msk_spec_eff, "  BW_E MSK teoreical=", msk_spec_eff_teor)
+
+
+## Find PSD params
+freq_psd_qam4, psd_qam4 = welch(baseband_qam4_signal_t, df, window='hann', nperseg=1024, scaling='density')
+freq_psd_qam16, psd_qam16 = welch(baseband_qam16_signal_t, df, window='hann', nperseg=1024, scaling='density')
+freq_psd_qam64, psd_qam64 = welch(baseband_qam64_signal_t, df, window='hann', nperseg=1024, scaling='density')
+freq_psd_qam256, psd_qam256 = welch(baseband_qam256_signal_t, df, window='hann', nperseg=1024, scaling='density')
+
+freq_psd_msk, psd_msk = welch(baseband_msk_signal_t, df, window='hann', nperseg=1024, scaling='density')
 
 
 ## Plotting signals's Amp and Phases
@@ -87,19 +164,18 @@ plt.show()
 fig2, axs = plt.subplots(2, 1, figsize=(10, 8))
 
 x_vals = np.arange(0, T_signal, msk._T_symb)
-axs[0].vlines(x_vals, np.min(np.real(baseband_msk_signal_t)), np.max(np.real(baseband_msk_signal_t)), linestyles='dashed')
 axs[1].vlines(x_vals, np.min(msk_phases), np.max(msk_phases), linestyles='dashed')
 
-axs[0].plot(tt, np.real(baseband_msk_signal_t),            '-', label='msk real')
-axs[0].plot(tt, np.imag(baseband_msk_signal_t),            '-', label='msk imag')
-axs[0].set_title('Amplitudes of MSK')
+axs[0].plot(t_msk, np.real(baseband_msk_signal_t),            '-', label='msk real')
+axs[0].plot(t_msk, np.imag(baseband_msk_signal_t),            '-', label='msk imag')
+axs[0].set_title('Baseband amplitudes of MSK')
 axs[0].set_xlabel('time sec')
 axs[0].set_ylabel('Amp')
 axs[0].legend()
 axs[0].grid(True)
 
-axs[1].plot(tt, msk_phases,            '-', label='msk')
-axs[1].set_title('Phases of MSK')
+axs[1].plot(t_msk, msk_phases,            '-', label='msk')
+axs[1].set_title('BasebansPhases of MSK')
 axs[1].set_xlabel('time sec')
 axs[1].set_ylabel('Radians')
 axs[1].legend()
@@ -109,166 +185,125 @@ plt.tight_layout()
 plt.show()
 
 
+## Plotting spectrums 
+# plotting qam
+fig3, axs = plt.subplots(4, 1, figsize=(16, 8))
 
-# ## Time-dimention teoretical functions
-# A = AMP_INFO_SPEC
-# w = INFO_SPEC_BANWIND / 2
-# f_0 = pass_freq
+axs[0].axvline(qam4_bandwidth/2, color='red', linestyle='--', label='right spectral edge')
+axs[0].axvline(-qam4_bandwidth/2, color='red', linestyle='--', label='left spectral edge')
+axs[0].plot(freqs, np.abs(qam4_spec), '--')
+axs[0].set_title('Amplitudes of QAM4')
+axs[0].set_xlabel('freq Hz')
+axs[0].set_ylabel('Amp')
+axs[0].legend()
+axs[0].grid(True)
 
-# def x_l_teor(t):
+axs[1].axvline(qam16_bandwidth/2, color='red', linestyle='--', label='right spectral edge')
+axs[1].axvline(-qam16_bandwidth/2, color='red', linestyle='--', label='left spectral edge')
+axs[1].plot(freqs, np.abs(qam16_spec), '--')
+axs[1].set_title('Amplitudes of QAM16')
+axs[1].set_xlabel('freq Hz')
+axs[1].set_ylabel('Amp')
+axs[1].legend()
+axs[1].grid(True)
 
-#     return A / (8*(PI**3)*w*(t*t)) * ((2*PI*w*t + 1j)*np.sin(2*PI*w*t) - (2*PI*1j*w*t)*np.cos(2*PI*w*t))
+axs[2].axvline(qam64_bandwidth/2, color='red', linestyle='--', label='right spectral edge')
+axs[2].axvline(-qam64_bandwidth/2, color='red', linestyle='--', label='left spectral edge')
+axs[2].plot(freqs, np.abs(qam64_spec), '--')
+axs[2].set_title('Amplitudes of QAM64')
+axs[2].set_xlabel('freq Hz')
+axs[2].set_ylabel('Amp')
+axs[2].legend()
+axs[2].grid(True)
 
-# def x_teor(t):
+axs[3].axvline(qam256_bandwidth/2, color='red', linestyle='--', label='right spectral edge')
+axs[3].axvline(-qam256_bandwidth/2, color='red', linestyle='--', label='left spectral edge')
+axs[3].plot(freqs, np.abs(qam256_spec), '--')
+axs[3].set_title('Amplitudes of QAM256')
+axs[3].set_xlabel('freq Hz')
+axs[3].set_ylabel('Amp')
+axs[3].legend()
+axs[3].grid(True)
 
-#     return np.real(x_l_teor(t) * np.exp(2*PI*1j*f_0*t))
+plt.tight_layout()
+plt.show()
 
-# def x_a_teor(t):
+# ploting msk
+fig4, axs = plt.subplots(2, 1, figsize=(10, 8))
 
-#     return 0.5*x_teor(t) + (0.5j)*np.imag(x_l_teor(t)*np.exp(2*PI*1j*f_0*t))
+axs[0].axvline(msk_bandwidth/2, color='red', linestyle='--', label='right spectral edge')
+axs[0].axvline(-msk_bandwidth/2, color='red', linestyle='--', label='left spectral edge')
+axs[0].plot(freqs, np.abs(msk_spec), '--')
+axs[0].set_title('MSK spectrum\'s amplitude')
+axs[0].set_xlabel('freq Hz')
+axs[0].set_ylabel('Amp')
+axs[0].legend()
+axs[0].grid(True)
 
-# def envelope_amp_teor(t):
+axs[1].plot(freqs, np.angle(msk_spec), '--')
+axs[1].set_title('MSK spectrum\'s phase')
+axs[1].set_xlabel('freq Hz')
+axs[1].set_ylabel('Radians')
+axs[1].grid(True)
 
-#     return np.abs(x_l_teor(t))
-
-# def envelope_phase_teor(t):
-
-#     return np.angle(x_l_teor(t))
-
-
-# ## Create modulator object
-# cem = ComplexEnvelopeModulator(pass_freq)
-
-
-# ## Find time-dimention function
-# x_l = cem.get_baseband_signal(x_teor)
-# x = cem.get_bandpass_signal(x_l_teor)
-# x_a = cem.get_analitic_signal(x_l_teor)
-# envelope_amp = cem.get_signalS_envelope_amp(x_l_teor)
-# envelope_phase = cem.get_signalS_envelope_phase(x_l_teor)
-
-
-# ## Calculate error
-# t = np.arange(t_start, t_end, dt)
-
-# err_x_l = np.abs(x_l(t) - x_l_teor(t))
-# err_x = np.abs(x(t) - x_teor(t))
-# err_x_a = np.abs(x_a(t) - x_a_teor(t))
-# err_envelope_amp = np.abs(envelope_amp(t) - envelope_amp_teor(t))
-# err_envelope_phase = np.abs(envelope_phase(t) - envelope_phase_teor(t))
-
-
-# ## Find spectrum
-# N = np.size(t)
-# T = dt
-# freq = fftfreq(N,T)
-# spec_analitic = X_l(freq)
-
-# X_l_teor = np.abs(fft(x_l_teor(t))) * (1.0/N)
-# X_teor = np.abs(fft(x_teor(t))) * (1.0/N)
-# X_a_teor = np.abs(fft(x_a_teor(t))) * (1.0/N)
-
-# X_l_prac = np.abs(fft(x_l(t))) * (1.0/N)
-# X_prac = np.abs(fft(x(t))) * (1.0/N)
-# X_a_prac = np.abs(fft(x_a(t))) * (1.0/N)
-
-
-
-# ## PLotting errors
-# plt.figure(figsize=(10, 6))
-
-# plt.semilogy(t, err_x_l,            '.', label='err x_l')
-# plt.semilogy(t, err_x,              '.', label='err x')
-# plt.semilogy(t, err_x_a,            '.', label='err x_a')
-# plt.semilogy(t, err_envelope_amp,   '.', label='err envelope amplitude')
-# plt.semilogy(t, err_envelope_phase, '.', label='err envelope phase')
-
-# plt.xlabel('t')
-# plt.ylabel('Error')
-# plt.title('Error curves of all functions')
-# plt.legend()
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+plt.tight_layout()
+plt.show()
 
 
-# # Plotting specturms
-# fig1, axs = plt.subplots(2, 1, figsize=(10, 8))
+## Plotting PSD
+# QAM4
+fig5, axs = plt.subplots(1, 1, figsize=(10, 8))
 
-# axs[0].plot(freq, X_l_teor,            '.', label='X_l teor')
-# axs[0].plot(freq, X_teor,              '.', label='X teor')
-# axs[0].plot(freq, X_a_teor,            '.', label='X_a teor')
-# axs[0].plot(freq, spec_analitic,            '.', label='X_l analitic')
-# axs[0].set_title('Spectrum curves of teoretical functions')
-# axs[0].set_xlabel('freq Hz')
-# axs[0].set_ylabel('Amp')
-# axs[0].legend()
-# axs[0].grid(True)
+axs.semilogy(freq_psd_qam4, psd_qam4, '--', label='QAM 4')
+axs.semilogy(freq_psd_msk, psd_msk , '--', label='MSK')
+axs.set_title('PSD QAM4 and MSK')
+axs.legend()
+axs.set_xlabel('freq Hz')
+axs.set_ylabel('PSD')
+axs.grid(True)
 
-# axs[1].plot(freq, X_l_prac,            '.', label='X_l prac')
-# axs[1].plot(freq, X_prac,              '.', label='X prac')
-# axs[1].plot(freq, X_a_prac,            '.', label='X_a prac')
-# axs[1].plot(freq, spec_analitic,            '.', label='X_l analitic')
-# axs[1].set_title('Spectrum curves of practical functions')
-# axs[1].set_xlabel('freq Hz')
-# axs[1].set_ylabel('Amp')
-# axs[1].legend()
-# axs[1].grid(True)
+plt.tight_layout()
+plt.show()
 
-# plt.tight_layout()
-# plt.show()
+# QAM16
+fig6, axs = plt.subplots(1, 1, figsize=(10, 8))
 
-# # Plotting time-dimention evnvelope with basepass signal
-# fig2, axs2 = plt.subplots(3, 2, figsize=(10, 12))
+axs.semilogy(freq_psd_qam16, psd_qam16, '--', label='QAM 16')
+axs.semilogy(freq_psd_msk, psd_msk , '--', label='MSK')
+axs.set_title('PSD QAM16 and MSK')
+axs.legend()
+axs.set_xlabel('freq Hz')
+axs.set_ylabel('PSD')
+axs.grid(True)
 
-# axs2[0][0].plot(t, x_teor(t),            '.-', label='x teor')
-# axs2[0][0].plot(t, envelope_amp_teor(t),              '.-', label='envelope amp teor')
-# axs2[0][0].set_title('Signal curves of teoretical functions with envelope')
-# axs2[0][0].set_xlabel('time sec')
-# axs2[0][0].set_ylabel('Amp')
-# axs2[0][0].legend()
-# axs2[0][0].grid(True)
+plt.tight_layout()
+plt.show()
 
-# axs2[0][1].plot(t, envelope_phase_teor(t),              '.', label='envelope phase teor')
-# axs2[0][1].set_title('Phase curve of teoretical envelope')
-# axs2[0][1].set_xlabel('time sec')
-# axs2[0][1].set_ylabel('radian')
-# axs2[0][1].legend()
-# axs2[0][1].grid(True)
+# QAM64
+fig7, axs = plt.subplots(1, 1, figsize=(10, 8))
 
+axs.semilogy(freq_psd_qam64, psd_qam64, '--', label='QAM 64')
+axs.semilogy(freq_psd_msk, psd_msk , '--', label='MSK')
+axs.set_title('PSD QAM64 and MSK')
+axs.legend()
+axs.set_xlabel('freq Hz')
+axs.set_ylabel('PSD')
+axs.grid(True)
 
-# axs2[1][0].plot(t, x(t),            '.-', label='x prac')
-# axs2[1][0].plot(t, envelope_amp(t),              '.-', label='envelope amp prac')
-# axs2[1][0].set_title('Signal curves of practical functions with envelope')
-# axs2[1][0].set_xlabel('time sec')
-# axs2[1][0].set_ylabel('Amp')
-# axs2[1][0].legend()
-# axs2[1][0].grid(True)
+plt.tight_layout()
+plt.show()
 
-# axs2[1][1].plot(t, envelope_phase(t),            '.', label='envelope phase teor')
-# axs2[1][1].set_title('Phase curve of practical envelope')
-# axs2[1][1].set_xlabel('time sec')
-# axs2[1][1].set_ylabel('radian')
-# axs2[1][1].legend()
-# axs2[1][1].grid(True)
+# QAM256
+fig8, axs = plt.subplots(1, 1, figsize=(10, 8))
 
+axs.semilogy(freq_psd_qam256, psd_qam256, '--', label='QAM 256')
+axs.semilogy(freq_psd_msk, psd_msk , '--', label='MSK')
+axs.set_title('PSD QAM256 and MSK')
+axs.legend()
+axs.set_xlabel('freq Hz')
+axs.set_ylabel('PSD')
+axs.grid(True)
 
-# axs2[2][0].plot(t, x_teor(t),            '.-', label='x teor')
-# axs2[2][0].plot(t, envelope_amp(t),              '.-', label='envelope amp prac')
-# axs2[2][0].set_title('Perform teoretical signal with practical envelope')
-# axs2[2][0].set_xlabel('time sec')
-# axs2[2][0].set_ylabel('Amp')
-# axs2[2][0].legend()
-# axs2[2][0].grid(True)
-
-# axs2[2][1].plot(t, envelope_phase(t),            '.', label='envelope phase prac')
-# axs2[2][1].plot(t, envelope_phase_teor(t),            '.', label='envelope phase teor')
-# axs2[2][1].set_title('Perform phase of envelopes')
-# axs2[2][1].set_xlabel('time sec')
-# axs2[2][1].set_ylabel('radian')
-# axs2[2][1].legend()
-# axs2[2][1].grid(True)
-
-# plt.tight_layout()
-# plt.show()
+plt.tight_layout()
+plt.show()
 
