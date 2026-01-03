@@ -7,7 +7,7 @@ from scipy.signal import welch
 
 from QAM_mapper import QAM_mapper
 from MSK_mapper import MSK_mapper
-from plotting_funcs import plot_constellation
+
 
 PI = np.pi
 

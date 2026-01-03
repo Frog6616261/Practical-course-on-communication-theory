@@ -1,102 +1,93 @@
-1.  Show that
-    $$\hat{X}(\omega) = -i \cdot \operatorname{sgn}(\omega) X(\omega)$$
-
-2.  Prove the properties of the Hilbert transform:
-
-    (a) If $x(t) = x(-t)$, then\
-        $$\hat{x}(t) = -\hat{x}(-t).$$
-
-    (b) If $x(t) = -x(-t)$, then\
-        $$\hat{x}(t) = \hat{x}(-t)$$
-
-    (c) $$\hat{\hat{x}}(t) = -x(t)$$
-
-    (d) $$\int_{-\infty}^{\infty} x^{2}(t)\, dt = \int_{-\infty}^{\infty} \hat{x}^{2}(t)\, dt$$
-
-    (e) $$\int_{-\infty}^{\infty} x(t)\hat{x}(t)\, dt = 0$$
 
 
-3.  Compute the Hilbert transform of the functions (x(t)):
+### 1: Average Transmitted Power of 8-QAM Constellations
+The figure below shows two different 8-point QAM signal constellations.  
+In both cases, the minimum Euclidean distance between adjacent constellation points is equal to \(2A\).
 
-    (a) $x(t) = const$\
-    (b) $x(t) = \sin{\omega t}$\
-    (c) $x(t) = \cos(\omega t)$\
-    (d) $x(t) = \frac{1}{1 + t^{2}}$
+- Determine the **average transmitted power** for each constellation, assuming that all signal points are **equiprobable**.
+- Identify **which constellation is more energy-efficient** and justify your answer.
 
-4.  The figure below shows four waveforms (s_i(t)), defining a certain
-    signal space.
-
-    ![описание](signals_in4.png)
+![Constellation diagram](1.png)
 
 
-    (a) Determine the dimension of the given signal space and obtain a
-        set of basis functions.\
-    (b) Use the basis functions to represent the four signal waveforms
-        as vectors $s_1, s_2, s_3, s_4$\
-    (c) Determine the minimum distance between any pair of vectors.
+### 2: Gray Coding for 16-QAM
+Propose a **Gray code mapping** for the 16-QAM modulation constellation shown in the figure.
 
-5.  Let
-    $$Z(t) = X(t) + jY(t)$$
-    be a complex random process, where $(X(t))$ and $(Y(t))$ are real,
-    independent, zero-mean, jointly stationary Gaussian random
-    processes. Their power spectral densities are known:
+![Constellation diagram](2.png)
 
-    $$
-    S_X(f) = S_Y(f) =
-    \begin{cases}
-    N_0, & |f| \le W, \\
-    0, & \text{otherwise}.
-    \end{cases}
-    $$\
 
-    (a) Find $(E[Z(t)])$ and $(R_Z(t+\tau, t))$, and show that
-        $(Z(t))$ is stationary.\
-    (b) Find the power spectral density of the process $(Z(t))$.\
-    (c) Assume that $(\varphi_1(t), \varphi_2(t)$,
-        $\ldots, \varphi_n(t))$ are orthonormal and all
-        $(\varphi_j(t))$ are band-limited to $([-W, W])$. Define
-        random variables $(Z_j)$ as projections of $(Z(t))$ onto
-        $(\varphi_j(t))$:
+### 3: Phase Tree and Trellis Diagram for Partial-Response CPM
+Draw:
+- the **phase tree**, and  
+- the **state trellis diagram**
 
-    $$
-    Z_j = \int_{-\infty}^{\infty} Z(t)\varphi_j^*(t)\, dt, \quad j = 1,2,\ldots,n.
-    $$
+for a **continuous phase modulation (CPM)** signal with **partial response**, given:
+- modulation index $h = \frac{1}{2} $,
+- frequency pulse shape  
+  $$
+  g(t) =
+  \begin{cases}
+  \frac{1}{4T}, & 0 \le t \le 2T \\
+  0, & \text{otherwise}
+  \end{cases}
+  $$
 
-    Determine $(E[Z_j]) $ and $(E[Z_j Z_k^*])$, and show that $(Z_j)$ are
-    i.i.d. zero-mean Gaussian random variables. Find their variance.
+---
 
-    (d) Define
+### 4: Power Spectral Density of a QPSK Baseband Signal
+Consider a phase-modulated signal represented by the equivalent complex baseband signal:
+$$
+u(t) = \sum_{n} I_n\, g(t - nT),
+$$
+where the information symbols $ I_n $ take one of four possible values  
+$$
+I_n \in \left\{ \frac{\pm 1 \pm j}{2} \right\}
+$$
+with equal probability. The symbol sequence $ \{I_n\} $ is statistically independent.
 
-    $$
-    \tilde{Z}(t) = Z(t) - \sum_{j=1}^n Z_j \varphi_j(t)
-    $$
+#### (a) Rectangular Pulse Shaping
+Determine and plot the **power spectral density (PSD)** of $ u(t) $ for the rectangular pulse:
+$$
+g(t) =
+\begin{cases}
+A, & 0 \le t \le T \\
+0, & \text{otherwise}
+\end{cases}
+$$
 
-    as the error of approximating $(Z(t))$ by a linear combination of
-    $(\varphi_j(t))$. Show that
+#### (b) Sinusoidal Pulse Shaping
+Repeat part (a) for the sinusoidal pulse:
+$$
+g(t) =
+\begin{cases}
+A \sin\left( \frac{\pi t}{T} \right), & 0 \le t \le T \\
+0, & \text{otherwise}
+\end{cases}
+$$
 
-    $$
-    E[\tilde{Z}(t) Z_k^*] = 0
-    $$
+#### (c) Spectral Comparison
+Compare the spectra obtained in parts (a) and (b), emphasizing bandwidth occupancy and sidelobe behavior.
 
-    for all $(k = 1, 2, \ldots, n)$.
+---
 
-6.  Write a Python class implementing:
+### 5: QAM and MSK Modulation in Python
+Implement a **Python class** that performs **QAM** and **MSK** modulation.  
+Use a **random binary sequence** as the information source.
 
-    (a) computation of a bandpass signal $(x(t))$ from a given low-pass
-        signal $(x_l(t))$;\
-    (b) computation of the analytic signal from a given bandpass signal
-        $(x(t))$;\
-    (c) computation of the low-pass signal $(x_l(t))$ from a given
-        bandpass signal $(x(t))$;\
-    (d) computation of the envelope of a bandpass signal from a given
-        low-pass signal $(x_l(t))$.
+Given:
+- bit rate: **10 kbps**,  
+- signal duration: **0.01 s**.
 
-    Demonstrate the results of the code using the spectrum
+#### (a) 16-QAM vs. MSK
+For **16-QAM** and **MSK** modulations:
+- compute the **spectral efficiency**,
+- compare the results with each other and with **theoretical values**,
+- plot the **power spectral densities** of both modulated signals on the same axes.
 
-    $$
-    (X_l(f)) = 
-    \begin{cases}
-    \frac{f + f_0}{2 f_0}, & -f_0 \le f \le f_0, \\
-    0, & \text{otherwise}.
-    \end{cases}
-    $$
+#### (b) Comparison of QAM Orders
+Repeat part (a) for:
+- **4-QAM**,  
+- **16-QAM**,  
+- **64-QAM**.
+
+Compare their spectral efficiencies and PSD characteristics.
