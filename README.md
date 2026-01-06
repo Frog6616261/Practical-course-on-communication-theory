@@ -7,5 +7,5 @@ Topics of the assignments:
 2) Probability Theory  
 3) Random processes
 4) Signal space
-5)
-6)
+5) Modulation's methods
+6) Optimal receptions in an AWGN channel
